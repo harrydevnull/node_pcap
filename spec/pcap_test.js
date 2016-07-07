@@ -16,9 +16,6 @@ describe("pcap Tests", function() {
       findalldevs: function(){
         return ["en0","eth0"];
       }
-
-
-
     };
 
     var mysessionObject = {

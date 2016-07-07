@@ -1,9 +1,53 @@
-var pcap_dump = require("../pcap_dump"),
+var
+  rewire = require("rewire"),
+  pcap_dump = rewire("../pcap_dump"),
   should = require("should"),
   sinon = require("sinon");
 
 describe("pcap_dump", function() {
   beforeEach(function() {
+    var pcapServiceMock = {
+
+      default_device: function() {
+        return "en0";
+      },
+      PcapSession: function() {
+        return mysessionObject;
+      },
+      findalldevs: function() {
+        return ["en0", "eth0"];
+      }
+    };
+    var mysessionObject = {
+      /* jshint ignore:start */
+      open_live: function(device_name, filter, buffer_size, outfile, packet_ready, is_monitor) {
+        return "LINKTYPE_ETHERNET";
+      },
+      open_offline: function(device_name, filter, buffer_size, outfile, packet_ready, is_monitor) {
+
+        return "LINKTYPE_ETHERNET";
+      },
+
+      fileno: function() {
+        return "123";
+      },
+      create_pcapDump: function(device_name, filter, buffer_size, outfile, packet_ready, is_monitor, number_of_packets_to_be_read) {
+        return "LINKTYPE_ETHERNET";
+      },
+      stats: function() {
+
+      },
+      close: function() {
+
+      }
+        /* jshint ignore:end */
+    };
+    pcap_dump.__set__({
+      "binding": pcapServiceMock
+
+    });
+
+
     this.instance = pcap_dump.createPcapDumpSession();
   });
 
