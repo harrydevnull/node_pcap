@@ -46,12 +46,13 @@ describe("pcap_dump", function() {
       "binding": pcapServiceMock
 
     });
-
-
-    this.instance = pcap_dump.createPcapDumpSession();
+    
   });
 
   describe("#start should take the default values ", function() {
+    beforeEach(function() {
+      this.instance = pcap_dump.createPcapDumpSession();
+    });
     it("buffer size should be 10485760 ", function() {
       this.instance.start();
       should(this.instance.buffer_size).be.equal(10485760);
@@ -104,6 +105,30 @@ describe("pcap_dump", function() {
       mock.restore();
 
     });
+
+
+  });
+
+
+   describe("#start should values given in  ", function() {
+    beforeEach(function() {
+      //(device_name, filter, buffer_size, outfile, packet_ready, is_monitor)
+      this.instance = pcap_dump.createPcapDumpSession("eth1","dst",1000,"","",false);
+    });
+    it("buffer size should be 1000 ", function() {
+      this.instance.start();
+      should(this.instance.buffer_size).be.equal(1000);
+    });
+    it("findalldevs  should return the arrayy ", function() {
+      this.instance.start();
+      var devices = pcap_dump.findalldevs();
+      should(devices[0]).be.equal("en0");
+      should(devices[1]).be.equal("eth0");
+    
+    });
+
+    
+
 
 
   });
