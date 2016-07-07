@@ -1,5 +1,6 @@
 var pcap_dump = require("../pcap_dump"),
-  should = require("should");
+  should = require("should"),
+  sinon = require("sinon");
 
 describe("pcap_dump", function() {
   beforeEach(function() {
@@ -33,8 +34,36 @@ describe("pcap_dump", function() {
 
     });
 
+    it("calls create_pcapDump when we start", function() {
+      var mock = sinon.mock(this.instance.session);
+      mock.expects("create_pcapDump").returns(true);
+      this.instance.start();
+      mock.verify();
+      mock.restore();
+
+    });
+
+    it("calls sesssion.close on calling close", function() {
+      var mock = sinon.mock(this.instance.session);
+      mock.expects("close").returns(true);
+      this.instance.close();
+      mock.verify();
+      mock.restore();
+
+    });
+
+    it("calls sesssion.stats on calling stats", function() {
+      var mock = sinon.mock(this.instance.session);
+      mock.expects("stats").returns(true);
+      this.instance.stats();
+      mock.verify();
+      mock.restore();
+
+    });
+
 
   });
+
 
 
 });
