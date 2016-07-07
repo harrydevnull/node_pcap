@@ -12,23 +12,25 @@ describe("pcap Tests", function() {
       },
       PcapSession: function() {
         return mysessionObject;
+      },
+      findalldevs: function(){
+        return ["en0","eth0"];
       }
+
+
 
     };
 
     var mysessionObject = {
+      /* jshint ignore:start */
       open_live: function(device_name, filter, buffer_size, outfile, packet_ready, is_monitor) {
-        //to get rid of the jslint error 
-        var some = device_name + filter + buffer_size + outfile + packet_ready+ is_monitor;
-        some = some + 1; 
         return "LINKTYPE_ETHERNET";
       },
       open_offline: function(device_name, filter, buffer_size, outfile, packet_ready, is_monitor) {
-        //to get rid of the jslint error 
-        var some = device_name + filter + buffer_size + outfile + packet_ready+ is_monitor;
-        some = some + 1; 
+
         return "LINKTYPE_ETHERNET";
       },
+      /* jshint ignore:end */
       fileno: function() {
         return "123";
       }
@@ -38,9 +40,11 @@ describe("pcap Tests", function() {
 
     };
 
+    /* jshint ignore:start */
     SocketWatcherMock.prototype.set = function(fd, two, three) {
-      console.log("one,two,three", fd, two, three);
+
     };
+    /* jshint ignore:end */
     SocketWatcherMock.prototype.start = function() {
 
     };
