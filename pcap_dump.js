@@ -12,7 +12,7 @@ function PcapDumpSession(device_name, filter, buffer_size, outfile, is_monitor, 
     this.is_monitor = Boolean(is_monitor);
     this.opened = null;
     this.packets_read = 0;
-    this.number_of_packets_to_be_read = number_of_packets_to_be_read || 1
+    this.number_of_packets_to_be_read = number_of_packets_to_be_read || 1;
     this.session = new binding.PcapSession();
 
     if (typeof this.buffer_size === "number" && !isNaN(this.buffer_size)) {
