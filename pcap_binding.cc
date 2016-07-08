@@ -46,16 +46,11 @@ class PiWorker : public AsyncWorker {
   // here, so everything we need for input and output
   // should go on `this`.
   void Execute () {
-    printf("Execute device %s,and filter %s Execute. %d........\n" ,device.c_str(),filter.c_str(),num_packets);
-    fflush(stdout);
     if (pcap_lookupnet(device.c_str(), &net, &mask, errbuf) == -1) {
         net = 0;
         mask = 0;
         fprintf(stderr, "warning: %s - this may not actually work\n", errbuf);
     }
-    fflush(stdout);
-    printf("Execute pcap_create %s,and filter %s Execute.........\n" ,device.c_str(),filter.c_str());
-    fflush(stdout);
     pcap_handle = pcap_create(device.c_str(), errbuf);
     if (pcap_handle == NULL) {
         Nan::ThrowError(errbuf);
@@ -91,7 +86,6 @@ class PiWorker : public AsyncWorker {
         Nan::ThrowError(pcap_geterr(pcap_handle));
         return;
     }
-    printf("calling pcapout %s Execute.........\n" ,pcap_output_filename.c_str());
     if ((pcap_output_filename.size()) > 0) {
         pcap_dump_handle = pcap_dump_open(pcap_handle,pcap_output_filename.c_str());
         if (pcap_dump_handle == NULL) {
@@ -118,7 +112,13 @@ class PiWorker : public AsyncWorker {
   }
 
   void HandleErrorCallback(){
-    printf("HandleErrorCallback\n" );
+    std::string error = std::string(errbuf);
+    Local<Value> argv[] = {
+       Nan::EmptyString()//TODO convert errbuf to error Message 
+      , Null()
+    };
+
+    callback->Call(2, argv);
   }
 
   // Executed when the async work is complete
@@ -130,7 +130,7 @@ class PiWorker : public AsyncWorker {
 
     Local<Value> argv[] = {
         Null()
-      , New<Number>(1)
+      , New<Number>(num_packets)
     };
 
     callback->Call(2, argv);
@@ -286,8 +286,6 @@ NAN_METHOD(LibVersion)
 
 // Asynchronous access to the `Estimate()` function
 NAN_METHOD(PcapDumpAsync) {
-    printf("Starting whr.........\n" );
-
 
     if (info.Length() == 8) {
         if (!info[0]->IsString()) {
@@ -333,10 +331,6 @@ NAN_METHOD(PcapDumpAsync) {
     int num_packets = info[6]->Int32Value();
     Callback *callback = new Callback(info[7].As<Function>()); 
 
-printf("calling  AsyncQueueWorker..%s.%s...%s ..%d...\n",*device, *filter,*pcap_output_filename,num_packets);
-  char idevice[100];
-  strncpy(idevice, *device, strlen(*device));
-  printf("idevice: %s", idevice);
   AsyncQueueWorker(new PiWorker(callback, std::string(*device),std::string(*filter),buffer_size, std::string(*pcap_output_filename),num_packets));
 }
 

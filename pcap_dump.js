@@ -33,11 +33,6 @@ exports.findalldevs = function() {
     return binding.findalldevs();
 };
 
-PcapDumpSession.prototype.start = function() {
-    
-    this.opened = true;
-    this.session.create_pcapDump(this.device_name, this.filter, this.buffer_size, this.outfile, PcapDumpSession.prototype.on_pcap_write_complete.bind(this), this.is_monitor, this.number_of_packets_to_be_read);
-};
 
 PcapDumpSession.prototype.startAsyncCapture = function() {
     
@@ -47,7 +42,7 @@ PcapDumpSession.prototype.startAsyncCapture = function() {
     this.filter, 
     this.buffer_size, 
     this.outfile, 
-    PcapDumpSession.prototype.on_pcap_write_complete.bind(this),
+    PcapDumpSession.prototype.on_packet.bind(this),
     this.is_monitor,
     this.number_of_packets_to_be_read,
     PcapDumpSession.prototype.on_pcap_write_complete_async.bind(this)
@@ -64,25 +59,21 @@ PcapDumpSession.prototype.stats = function() {
     return this.session.stats();
 };
 
-PcapDumpSession.prototype.on_pcap_write_complete_async = function() {
-   console.log("heoloo I am complete");
+PcapDumpSession.prototype.on_pcap_write_complete_async = function(err,packet_count) {
     this.emit("pcap_write_complete_async",{
-            "packets_read":this.packets_read ,
+            "packets_read":packet_count ,
             "fileName":this.outfile
         });
 
 };
 
-PcapDumpSession.prototype.on_pcap_write_complete = function() {
-    this.packets_read = this.packets_read + 1;
-    if (this.packets_read >= this.number_of_packets_to_be_read) {
-        this.emit("pcap_write_complete",{
-            "packets_read":this.packets_read ,
-            "fileName":this.outfile
-        });
-    }
+
+PcapDumpSession.prototype.on_packet = function(packet) {
+    this.emit("packet",packet);
 
 };
+
+
 
 
 exports.PcapDumpSession = PcapDumpSession;

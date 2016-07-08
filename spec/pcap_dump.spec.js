@@ -16,7 +16,12 @@ describe("pcap_dump", function() {
       },
       findalldevs: function() {
         return ["en0", "eth0"];
-      }
+      },
+      /* jshint ignore:start */
+      create_pcap_dump_async: function(device_name, filter, buffer_size, outfile, packet_ready, is_monitor, packet_write_complete) {
+          return "LINKTYPE_ETHERNET";
+        }
+        /* jshint ignore:end */
     };
     var mysessionObject = {
       /* jshint ignore:start */
@@ -31,60 +36,51 @@ describe("pcap_dump", function() {
       fileno: function() {
         return "123";
       },
-      create_pcapDump: function(device_name, filter, buffer_size, outfile, packet_ready, is_monitor, number_of_packets_to_be_read) {
-        return "LINKTYPE_ETHERNET";
-      },
+
       stats: function() {
 
       },
       close: function() {
 
-      }
+        }
         /* jshint ignore:end */
     };
     pcap_dump.__set__({
       "binding": pcapServiceMock
 
     });
-    
+
   });
+
+
 
   describe("#start should take the default values ", function() {
     beforeEach(function() {
       this.instance = pcap_dump.createPcapDumpSession();
     });
     it("buffer size should be 10485760 ", function() {
-      this.instance.start();
+      this.instance.startAsyncCapture();
       should(this.instance.buffer_size).be.equal(10485760);
     });
 
     it("outfile should be tmp.pcap ", function() {
-      this.instance.start();
+      this.instance.startAsyncCapture();
 
       should(this.instance.outfile).be.equal("tmp.pcap");
 
     });
 
     it("number_of_packets_to_be_read should be 1", function() {
-      this.instance.start();
+      this.instance.startAsyncCapture();
 
       should(this.instance.number_of_packets_to_be_read).be.equal(1);
 
     });
 
     it("is_monitor should be false", function() {
-      this.instance.start();
+      this.instance.startAsyncCapture();
 
       should(this.instance.is_monitor).be.equal(false);
-
-    });
-
-    it("calls create_pcapDump when we start", function() {
-      var mock = sinon.mock(this.instance.session);
-      mock.expects("create_pcapDump").returns(true);
-      this.instance.start();
-      mock.verify();
-      mock.restore();
 
     });
 
@@ -110,29 +106,23 @@ describe("pcap_dump", function() {
   });
 
 
-   describe("#start should values given in  ", function() {
+  describe("#start should values given in  ", function() {
     beforeEach(function() {
       //(device_name, filter, buffer_size, outfile, packet_ready, is_monitor)
-      this.instance = pcap_dump.createPcapDumpSession("eth1","dst",1000,"","",false);
+      this.instance = pcap_dump.createPcapDumpSession("eth1", "dst", 1000, "", "", false);
     });
     it("buffer size should be 1000 ", function() {
-      this.instance.start();
+      this.instance.startAsyncCapture();
       should(this.instance.buffer_size).be.equal(1000);
     });
     it("findalldevs  should return the arrayy ", function() {
-      this.instance.start();
+      this.instance.startAsyncCapture();
       var devices = pcap_dump.findalldevs();
       should(devices[0]).be.equal("en0");
       should(devices[1]).be.equal("eth0");
-    
+
     });
 
-    
-
-
-
   });
-
-
 
 });
