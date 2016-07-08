@@ -66,6 +66,10 @@ PcapDumpSession.prototype.stats = function() {
 
 PcapDumpSession.prototype.on_pcap_write_complete_async = function() {
    console.log("heoloo I am complete");
+    this.emit("pcap_write_complete_async",{
+            "packets_read":this.packets_read ,
+            "fileName":this.outfile
+        });
 
 };
 

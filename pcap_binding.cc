@@ -24,12 +24,13 @@ using Nan::To;
 class PiWorker : public AsyncWorker {
  public:
   PiWorker(
-    Callback *callback,
-    char * device,
-    char * filter,
-    int buffer_size,
-    char * pcap_output_filename,
-    int num_packets)
+        Callback *callback,
+        std::string device,
+        std::string filter,
+        int buffer_size,
+        std::string pcap_output_filename,
+        int num_packets
+    )
     : 
     AsyncWorker(callback), 
     device(device), 
@@ -45,14 +46,17 @@ class PiWorker : public AsyncWorker {
   // here, so everything we need for input and output
   // should go on `this`.
   void Execute () {
-    if (pcap_lookupnet(device, &net, &mask, errbuf) == -1) {
+    printf("Execute device %s,and filter %s Execute. %d........\n" ,device.c_str(),filter.c_str(),num_packets);
+    fflush(stdout);
+    if (pcap_lookupnet(device.c_str(), &net, &mask, errbuf) == -1) {
         net = 0;
         mask = 0;
         fprintf(stderr, "warning: %s - this may not actually work\n", errbuf);
     }
-
-    
-    pcap_handle = pcap_create(device, errbuf);
+    fflush(stdout);
+    printf("Execute pcap_create %s,and filter %s Execute.........\n" ,device.c_str(),filter.c_str());
+    fflush(stdout);
+    pcap_handle = pcap_create(device.c_str(), errbuf);
     if (pcap_handle == NULL) {
         Nan::ThrowError(errbuf);
         return;
@@ -87,9 +91,9 @@ class PiWorker : public AsyncWorker {
         Nan::ThrowError(pcap_geterr(pcap_handle));
         return;
     }
-    
-    if (strlen(pcap_output_filename) > 0) {
-        pcap_dump_handle = pcap_dump_open(pcap_handle,pcap_output_filename);
+    printf("calling pcapout %s Execute.........\n" ,pcap_output_filename.c_str());
+    if ((pcap_output_filename.size()) > 0) {
+        pcap_dump_handle = pcap_dump_open(pcap_handle,pcap_output_filename.c_str());
         if (pcap_dump_handle == NULL) {
             Nan::ThrowError("error opening dump");
             return;
@@ -97,8 +101,8 @@ class PiWorker : public AsyncWorker {
     }
     
     
-    if ((std::string(filter)).length() != 0) {
-        if (pcap_compile(pcap_handle, &fp, filter, 1, net) == -1) {
+    if (filter.size() != 0) {
+        if (pcap_compile(pcap_handle, &fp, filter.c_str(), 1, net) == -1) {
             Nan::ThrowError(pcap_geterr(pcap_handle));
             return;
         }
@@ -108,15 +112,20 @@ class PiWorker : public AsyncWorker {
             return;
         }
 
-        pcap_loop(pcap_handle, num_packets, OnPacketReady, NULL);
+        pcap_loop(pcap_handle, num_packets, OnPacketReady, (unsigned char *)pcap_dump_handle);
         pcap_freecode(&fp);
     }
+  }
+
+  void HandleErrorCallback(){
+    printf("HandleErrorCallback\n" );
   }
 
   // Executed when the async work is complete
   // this function will be run inside the main event loop
   // so it is safe to use V8 again
   void HandleOKCallback () {
+
     Nan::HandleScope scope;
 
     Local<Value> argv[] = {
@@ -130,17 +139,15 @@ class PiWorker : public AsyncWorker {
 
 
 static void OnPacketReady(u_char *s, const struct pcap_pkthdr* pkthdr, const u_char* packet) {
-    Nan::HandleScope scope;
-
-
+   pcap_dump(s, pkthdr, packet);
 }
 
  private:
 
-    char * device;
-    char * filter;
+    std::string device;
+    std::string filter;
     int buffer_size;
-    char * pcap_output_filename;
+    std::string pcap_output_filename;
     int num_packets;
     struct bpf_program fp;
     bpf_u_int32 mask;
@@ -326,9 +333,11 @@ NAN_METHOD(PcapDumpAsync) {
     int num_packets = info[6]->Int32Value();
     Callback *callback = new Callback(info[7].As<Function>()); 
 
-printf("calling  AsyncQueueWorker.........\n" );
-
-  AsyncQueueWorker(new PiWorker(callback, (char *) *device,(char *) *filter,buffer_size, (char *) *pcap_output_filename,num_packets));
+printf("calling  AsyncQueueWorker..%s.%s...%s ..%d...\n",*device, *filter,*pcap_output_filename,num_packets);
+  char idevice[100];
+  strncpy(idevice, *device, strlen(*device));
+  printf("idevice: %s", idevice);
+  AsyncQueueWorker(new PiWorker(callback, std::string(*device),std::string(*filter),buffer_size, std::string(*pcap_output_filename),num_packets));
 }
 
 
