@@ -12,6 +12,148 @@
 #include "pcap_session.h"
 
 using namespace v8;
+using Nan::Callback;
+using Nan::AsyncQueueWorker;
+using Nan::AsyncWorker;
+using Nan::Callback;
+using Nan::HandleScope;
+using Nan::New;
+using Nan::Null;
+using Nan::To;
+
+class PiWorker : public AsyncWorker {
+ public:
+  PiWorker(
+    Callback *callback,
+    char * device,
+    char * filter,
+    int buffer_size,
+    char * pcap_output_filename,
+    int num_packets)
+    : 
+    AsyncWorker(callback), 
+    device(device), 
+    filter(filter),
+    buffer_size(buffer_size),
+    pcap_output_filename(pcap_output_filename),
+    num_packets(num_packets)
+    {}
+  ~PiWorker() {}
+
+  // Executed inside the worker-thread.
+  // It is not safe to access V8, or V8 data structures
+  // here, so everything we need for input and output
+  // should go on `this`.
+  void Execute () {
+    if (pcap_lookupnet(device, &net, &mask, errbuf) == -1) {
+        net = 0;
+        mask = 0;
+        fprintf(stderr, "warning: %s - this may not actually work\n", errbuf);
+    }
+
+    
+    pcap_handle = pcap_create(device, errbuf);
+    if (pcap_handle == NULL) {
+        Nan::ThrowError(errbuf);
+        return;
+    }
+     
+    // 64KB is the max IPv4 packet size
+    if (pcap_set_snaplen(pcap_handle, 65535) != 0) {
+        Nan::ThrowError("error setting snaplen");
+        return;
+    }
+
+    // always use promiscuous mode
+    if (pcap_set_promisc(pcap_handle, 1) != 0) {
+        Nan::ThrowError("error setting promiscuous mode");
+        return;
+    }
+    
+    // Try to set buffer size.  Sometimes the OS has a lower limit that it will silently enforce.
+    if (pcap_set_buffer_size(pcap_handle, buffer_size) != 0) {
+        Nan::ThrowError("error setting buffer size");
+        return;
+    }
+      
+    
+    // set "timeout" on read, even though we are also setting nonblock below.  On Linux this is required.
+    if (pcap_set_timeout(pcap_handle, 1000) != 0) {
+        Nan::ThrowError("error setting read timeout");
+        return;
+    }
+    
+    if (pcap_activate(pcap_handle) != 0) {
+        Nan::ThrowError(pcap_geterr(pcap_handle));
+        return;
+    }
+    
+    if (strlen(pcap_output_filename) > 0) {
+        pcap_dump_handle = pcap_dump_open(pcap_handle,pcap_output_filename);
+        if (pcap_dump_handle == NULL) {
+            Nan::ThrowError("error opening dump");
+            return;
+        }
+    }
+    
+    
+    if ((std::string(filter)).length() != 0) {
+        if (pcap_compile(pcap_handle, &fp, filter, 1, net) == -1) {
+            Nan::ThrowError(pcap_geterr(pcap_handle));
+            return;
+        }
+           
+        if (pcap_setfilter(pcap_handle, &fp) == -1) {
+            Nan::ThrowError(pcap_geterr(pcap_handle));
+            return;
+        }
+
+        pcap_loop(pcap_handle, num_packets, OnPacketReady, NULL);
+        pcap_freecode(&fp);
+    }
+  }
+
+  // Executed when the async work is complete
+  // this function will be run inside the main event loop
+  // so it is safe to use V8 again
+  void HandleOKCallback () {
+    Nan::HandleScope scope;
+
+    Local<Value> argv[] = {
+        Null()
+      , New<Number>(1)
+    };
+
+    callback->Call(2, argv);
+  }
+
+
+
+static void OnPacketReady(u_char *s, const struct pcap_pkthdr* pkthdr, const u_char* packet) {
+    Nan::HandleScope scope;
+
+
+}
+
+ private:
+
+    char * device;
+    char * filter;
+    int buffer_size;
+    char * pcap_output_filename;
+    int num_packets;
+    struct bpf_program fp;
+    bpf_u_int32 mask;
+    bpf_u_int32 net;
+    pcap_t *pcap_handle;
+    pcap_dumper_t *pcap_dump_handle;
+    char * errbuf;
+  
+
+   
+  
+};
+
 
 // Helper method, convert a sockaddr* (AF_INET or AF_INET6) to a string, and set it as the property
 // named 'key' in the Address object you pass in.
@@ -135,6 +277,61 @@ NAN_METHOD(LibVersion)
     info.GetReturnValue().Set(Nan::New(pcap_lib_version()).ToLocalChecked());
 }
 
+// Asynchronous access to the `Estimate()` function
+NAN_METHOD(PcapDumpAsync) {
+    printf("Starting whr.........\n" );
+
+
+    if (info.Length() == 8) {
+        if (!info[0]->IsString()) {
+            Nan::ThrowTypeError("pcap Open: info[0] must be a String");
+            return;
+        }
+        if (!info[1]->IsString()) {
+            Nan::ThrowTypeError("pcap Open: info[1] must be a String");
+            return;
+        }
+        if (!info[2]->IsInt32()) {
+            Nan::ThrowTypeError("pcap Open: info[2] must be a Number");
+            return;
+        }
+        if (!info[3]->IsString()) {
+            Nan::ThrowTypeError("pcap Open: info[3] must be a String");
+            return;
+        }
+        if (!info[4]->IsFunction()) {
+            Nan::ThrowTypeError("pcap Open: info[4] must be a Function");
+            return;
+        }
+        if (!info[5]->IsBoolean()) {
+            Nan::ThrowTypeError("pcap Open: info[5] must be a Boolean");
+            return;
+        }
+        if (!info[6]->IsInt32()) {
+            Nan::ThrowTypeError("pcap Open: info[6] must be a Number");
+            return;
+        }
+        if (!info[7]->IsFunction()) {
+            Nan::ThrowTypeError("pcap Open: info[7] must be a Function");
+            return;
+        }
+    } else {
+        Nan::ThrowTypeError("pcap CreatePcapDump: expecting 7 arguments");
+        return;
+    }
+    Nan::Utf8String device(info[0]->ToString());
+    Nan::Utf8String filter(info[1]->ToString());
+    int buffer_size = info[2]->Int32Value();
+    Nan::Utf8String pcap_output_filename(info[3]->ToString());
+    int num_packets = info[6]->Int32Value();
+    Callback *callback = new Callback(info[7].As<Function>()); 
+
+printf("calling  AsyncQueueWorker.........\n" );
+
+  AsyncQueueWorker(new PiWorker(callback, (char *) *device,(char *) *filter,buffer_size, (char *) *pcap_output_filename,num_packets));
+}
+
+
 void Initialize(Handle<Object> exports)
 {
     Nan::HandleScope scope;
@@ -144,6 +341,7 @@ void Initialize(Handle<Object> exports)
     exports->Set(Nan::New("findalldevs").ToLocalChecked(), Nan::New<FunctionTemplate>(FindAllDevs)->GetFunction());
     exports->Set(Nan::New("default_device").ToLocalChecked(), Nan::New<FunctionTemplate>(DefaultDevice)->GetFunction());
     exports->Set(Nan::New("lib_version").ToLocalChecked(), Nan::New<FunctionTemplate>(LibVersion)->GetFunction());
+    exports->Set(Nan::New("create_pcap_dump_async").ToLocalChecked(), Nan::New<FunctionTemplate>(PcapDumpAsync)->GetFunction());
 }
 
 NODE_MODULE(pcap_binding, Initialize)

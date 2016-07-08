@@ -9,4 +9,5 @@ pcap_dump.on('pcap_write_complete',function(message){
         console.log("done.....",message);
 });
 
-pcap_dump.start();
+//pcap_dump.start();
+pcap_dump.startAsyncCapture();

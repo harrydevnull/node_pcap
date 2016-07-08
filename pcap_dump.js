@@ -39,6 +39,22 @@ PcapDumpSession.prototype.start = function() {
     this.session.create_pcapDump(this.device_name, this.filter, this.buffer_size, this.outfile, PcapDumpSession.prototype.on_pcap_write_complete.bind(this), this.is_monitor, this.number_of_packets_to_be_read);
 };
 
+PcapDumpSession.prototype.startAsyncCapture = function() {
+    
+    this.opened = true;
+    binding.create_pcap_dump_async(
+    this.device_name,
+    this.filter, 
+    this.buffer_size, 
+    this.outfile, 
+    PcapDumpSession.prototype.on_pcap_write_complete.bind(this),
+    this.is_monitor,
+    this.number_of_packets_to_be_read,
+    PcapDumpSession.prototype.on_pcap_write_complete_async.bind(this)
+    );
+};
+
+
 PcapDumpSession.prototype.close = function() {
     this.opened = false;
     this.session.close();
@@ -48,6 +64,10 @@ PcapDumpSession.prototype.stats = function() {
     return this.session.stats();
 };
 
+PcapDumpSession.prototype.on_pcap_write_complete_async = function() {
+   console.log("heoloo I am complete");
+
+};
 
 PcapDumpSession.prototype.on_pcap_write_complete = function() {
     this.packets_read = this.packets_read + 1;
