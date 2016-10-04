@@ -39,7 +39,9 @@ class PcapWorker : public AsyncWorker {
     pcap_output_filename(pcap_output_filename),
     num_packets(num_packets)
     {}
-  ~PcapWorker() {}
+  ~PcapWorker() {
+    delete callback;
+  }
 
   // Executed inside the worker-thread.
   // It is not safe to access V8, or V8 data structures
